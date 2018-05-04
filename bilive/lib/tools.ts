@@ -2,7 +2,7 @@ import fs from 'fs'
 import util from 'util'
 import crypto from 'crypto'
 import request from 'request'
-import { apiLiveOrigin, liveOrigin } from '../index'
+import { liveOrigin, apiVCOrigin, apiLiveOrigin, _options } from '../index'
 const FSmkdir = util.promisify(fs.mkdir)
 const FSexists = util.promisify(fs.exists)
 const FScopyFile = util.promisify(fs.copyFile)
@@ -19,7 +19,7 @@ function getHeaders(platform: string): request.Headers {
     case 'Android':
       return {
         'Connection': 'Keep-Alive',
-        'User-Agent': 'Mozilla/5.0 BiliDroid/5.22.0 (bbcallen@gmail.com)'
+        'User-Agent': 'Mozilla/5.0 BiliDroid/5.25.0 (bbcallen@gmail.com)'
       }
     case 'WebView':
       return {
@@ -28,7 +28,7 @@ function getHeaders(platform: string): request.Headers {
         'Connection': 'keep-alive',
         'Cookie': 'l=v',
         'Origin': liveOrigin,
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 7.1.1; E6883 Build/32.4.A.1.54; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/64.0.3282.119 Mobile Safari/537.36 BiliApp/5220000',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; G8142 Build/47.1.A.8.49; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/65.0.3325.109 Mobile Safari/537.36 BiliApp/5250000',
         'X-Requested-With': 'tv.danmaku.bili'
       }
     default:
@@ -39,7 +39,7 @@ function getHeaders(platform: string): request.Headers {
         'Cookie': 'l=v',
         'DNT': '1',
         'Origin': liveOrigin,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.119 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
       }
   }
 }
@@ -75,7 +75,7 @@ async function testIP(apiIPs: string[]): Promise<number> {
   apiIPs.forEach(ip => {
     const headers = getHeaders('PC')
     const options = {
-      uri: apiLiveOrigin,
+      uri: `${apiLiveOrigin}/ip_service/v1/ip_service/get_ip_addr`,
       proxy: `http://${ip}/`,
       tunnel: false,
       method: 'GET',
@@ -89,6 +89,7 @@ async function testIP(apiIPs: string[]): Promise<number> {
       })
     }))
   })
+  Log('正在测试可用ip')
   await Promise.all(test)
   const num = api.IPs.size
   Log('可用ip数量为', num)
@@ -127,7 +128,7 @@ function XHR<T>(options: request.OptionsWithUri, platform: 'PC' | 'Android' | 'W
   return new Promise<response<T> | undefined>(resolve => {
     options.gzip = true
     // 添加用户代理
-    if (typeof options.uri === 'string' && options.uri.startsWith(apiLiveOrigin)) {
+    if (typeof options.uri === 'string' && (options.uri.startsWith(apiLiveOrigin) || options.uri.startsWith(apiVCOrigin))) {
       const ip = api.ip
       if (ip !== '') {
         options.proxy = `http://${ip}/`
@@ -160,7 +161,7 @@ function XHR<T>(options: request.OptionsWithUri, platform: 'PC' | 'Android' | 'W
 function Options(options?: _options): Promise<_options> {
   return new Promise(async resolve => {
     // 根据npm start参数不同设置不同路径
-    const dirname = __dirname + (process.env.npm_package_scripts_start === 'node build/app.js' ? '/../../..' : '/../..')
+    const dirname = __dirname + (process.env.npm_package_scripts_start === 'node ./build/app.js' ? '/../../..' : '/../..')
     // 检查是否有options目录
     const hasDir = await FSexists(dirname + '/options/')
     if (!hasDir) await FSmkdir(dirname + '/options/')
@@ -274,6 +275,22 @@ function ErrorLog(...message: any[]) {
   console.error(`${new Date().toString().slice(4, 24)} :`, ...message)
 }
 /**
+ * 发送Server酱消息
+ * 
+ * @param {string} message 
+ */
+function sendSCMSG(message: string) {
+  const adminServerChan = _options.config.adminServerChan
+  if (adminServerChan !== '') {
+    const sendtoadmin: request.Options = {
+      method: 'POST',
+      uri: `https://sc.ftqq.com/${adminServerChan}.send`,
+      body: `text=bilive_client&desp=${message}`
+    }
+    XHR<serverChan>(sendtoadmin)
+  }
+}
+/**
  * sleep
  * 
  * @param {number} ms
@@ -292,5 +309,5 @@ interface response<T> {
   response: request.RequestResponse
   body: T
 }
-export default { testIP, XHR, setCookie, getCookie, Options, getShortRoomID, getLongRoomID, JSONparse, Hash, Log, logs, ErrorLog, Sleep }
+export default { testIP, XHR, setCookie, getCookie, Options, getShortRoomID, getLongRoomID, JSONparse, Hash, Log, logs, ErrorLog, sendSCMSG, Sleep }
 export { response }

@@ -2,7 +2,7 @@ import request from 'request'
 import tools, { response } from './lib/tools'
 import Online from './online'
 import AppClient from './lib/app_client'
-import { apiLiveOrigin, _options, liveOrigin, _user } from './index'
+import { liveOrigin, apiVCOrigin, apiLiveOrigin, _options, _user } from './index'
 /**
  * Creates an instance of User.
  * 
@@ -27,7 +27,6 @@ class User extends Online {
   private _treasureBox = false
   private _eventRoom = false
   private _silver2coin = false
-  private _getCapsule = false
   /**
    * 当账号出现异常时, 会返回'captcha'或'stop'
    * 'captcha'为登录需要验证码, 若无法处理需Stop()
@@ -54,12 +53,21 @@ class User extends Online {
    * 
    * @memberof User
    */
-  public nextDay() {
+  public async nextDay() {
+    // 每天刷新token和cookie
+    const refresh = await this.refresh()
+    if (refresh.status === AppClient.status.success) {
+      this.jar = tools.setCookie(this.cookieString)
+      tools.Options(_options)
+    }
+    else if (refresh.status === AppClient.status.error) {
+      const status = await this._tokenError()
+      if (status !== undefined) return this.Stop()
+    }
     this._sign = false
     this._treasureBox = false
     this._eventRoom = false
     this._silver2coin = false
-    this._getCapsule = false
   }
   /**
    * 日常
@@ -73,7 +81,6 @@ class User extends Online {
     this.silver2coin()
     this.sendGift()
     this.signGroup()
-    this.getCapsule()
   }
   /**
    * 每日签到
@@ -91,7 +98,7 @@ class User extends Online {
     }
     const signInfo = await tools.XHR<signInfo>(sign, 'Android')
     if (signInfo !== undefined && signInfo.response.statusCode === 200 && signInfo.body.code === 0) {
-      ok += 1
+      ok++
       tools.Log(this.nickname, '每日签到', '已签到')
     }
     // 道具包裹
@@ -102,7 +109,7 @@ class User extends Online {
     }
     const getBagGift = await tools.XHR<getBagGift>(getBag, 'Android')
     if (getBagGift !== undefined && getBagGift.response.statusCode === 200 && getBagGift.body.code === 0) {
-      ok += 1
+      ok++
       tools.Log(this.nickname, '每日签到', '已获取每日包裹')
     }
     if (ok === 2) this._sign = true
@@ -171,7 +178,7 @@ class User extends Online {
         }
         const taskres = await tools.XHR(task)
         if (taskres !== undefined && taskres.response.statusCode === 200
-          && (taskres.response.body.code === 0 || taskres.response.body.code === -400)) ok += 1
+          && (taskres.response.body.code === 0 || taskres.response.body.code === -400)) ok++
         if (ok === tasks.length) {
           this._eventRoom = true
           tools.Log(this.nickname, '每日任务', '每日任务已完成')
@@ -223,38 +230,12 @@ class User extends Online {
     checkExchange(silver2coinWeb)
   }
   /**
-   * 获取扭蛋币
-   * 
-   * @memberof User
-   */
-  public async getCapsule() {
-    if (this._getCapsule || !this.userData.getCapsule) return
-    const roomID = _options.config.defaultRoomID
-    const capsule: request.Options = {
-      uri: `${apiLiveOrigin}/redLeaf/kingMoneyGift`,
-      jar: this.jar,
-      json: true,
-      headers: { 'Referer': `${liveOrigin}/${tools.getShortRoomID(roomID)}` }
-    }
-    const getCapsule = await tools.XHR<capsule>(capsule)
-    if (getCapsule === undefined || getCapsule.response.statusCode !== 200) return
-    if (getCapsule.body.code === 0) {
-      this._getCapsule = true
-      tools.Log(this.nickname, '获取扭蛋币', getCapsule.body.msg)
-    }
-    else if (getCapsule.body.code === -400) {
-      this._getCapsule = true
-      tools.Log(this.nickname, '获取扭蛋币', getCapsule.body.msg)
-    }
-    else tools.Log(this.nickname, '获取扭蛋币', '兑换失败', getCapsule.body)
-  }
-  /**
    * 自动送礼
    * 
    * @memberof User
    */
   public async sendGift() {
-    if (!this.userData.sendGift) return
+    if (!this.userData.sendGift || this.userData.sendGiftRoom === 0) return
     const roomID = this.userData.sendGiftRoom
     // 获取房间信息
     const room: request.Options = {
@@ -313,7 +294,7 @@ class User extends Online {
     if (!this.userData.signGroup) return
     // 获取已加入应援团列表
     const group: request.Options = {
-      uri: `${apiLiveOrigin}/link_group/v1/member/my_groups?${AppClient.signQueryBase(this.tokenQuery)}`,
+      uri: `${apiVCOrigin}/link_group/v1/member/my_groups?${AppClient.signQueryBase(this.tokenQuery)}`,
       json: true,
       headers: this.headers
     }
@@ -323,7 +304,7 @@ class User extends Online {
       if (linkGroup.body.data.list.length > 0) {
         for (const groupInfo of linkGroup.body.data.list) {
           const sign: request.Options = {
-            uri: `${apiLiveOrigin}/link_setting/v1/link_setting/sign_in?${AppClient.signQueryBase(`group_id=${groupInfo.group_id}\
+            uri: `${apiVCOrigin}/link_setting/v1/link_setting/sign_in?${AppClient.signQueryBase(`group_id=${groupInfo.group_id}\
 &owner_id=${groupInfo.owner_uid}&${this.tokenQuery}`)}`,
             json: true,
             headers: this.headers

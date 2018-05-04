@@ -71,7 +71,7 @@ class Online extends AppClient {
       this.jar = tools.setCookie(this.cookieString)
     }
     const test = await this.getOnlineInfo()
-    if (typeof test === 'string') return test
+    if (test !== undefined) return test
     this._heartLoop()
   }
   /**
@@ -83,6 +83,7 @@ class Online extends AppClient {
     clearTimeout(this._heartTimer)
     this.userData.status = false
     tools.Options(_options)
+    tools.sendSCMSG(`${this.nickname} 已停止挂机`)
   }
   /**
    * 检查是否登录
@@ -109,9 +110,9 @@ class Online extends AppClient {
    */
   protected async _heartLoop() {
     const heartTest = await this._onlineHeart()
-    if (typeof heartTest === 'string') {
+    if (heartTest !== undefined) {
       const test = await this._cookieError()
-      if (test === 'captcha') this.Stop()
+      if (test !== undefined) this.Stop()
     }
     else this._heartTimer = setTimeout(() => this._heartLoop(), 5 * 60 * 1000)
   }
@@ -158,7 +159,7 @@ class Online extends AppClient {
     if (refresh.status === AppClient.status.success) {
       this.jar = tools.setCookie(this.cookieString)
       await this.getOnlineInfo()
-      await tools.Options(_options)
+      tools.Options(_options)
       this._heartLoop()
       tools.Log(this.nickname, 'Cookie已更新')
     }
@@ -179,7 +180,7 @@ class Online extends AppClient {
       this.captchaJPEG = ''
       this.jar = tools.setCookie(this.cookieString)
       await this.getOnlineInfo()
-      await tools.Options(_options)
+      tools.Options(_options)
       this._heartLoop()
       tools.Log(this.nickname, 'Token已更新')
     }
