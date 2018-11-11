@@ -1,12 +1,12 @@
 import crypto from 'crypto'
 import request from 'request'
-import tools, { response } from './tools'
+import tools from './tools'
 /**
  * 登录状态
- * 
+ *
  * @enum {number}
  */
-enum status {
+enum appStatus {
   'success',
   'captcha',
   'error',
@@ -15,7 +15,7 @@ enum status {
 /**
  * Creates an instance of AppClient.
  * 创建实例后务必init()
- * 
+ *
  * @class AppClient
  */
 class AppClient {
@@ -31,7 +31,8 @@ class AppClient {
   // bilibili 客户端
   private static readonly __secretKey: string = '560c52ccd288fed045859ed18bffd973'
   public static readonly appKey: string = '1d8b6e7d45233436'
-  public static readonly build: string = '5260003'
+  public static readonly build: string = '5291001'
+  public static readonly device: string = 'android'
   public static readonly mobiApp: string = 'android'
   // bilibili 国际版
   // private static readonly __secretKey: string = '36efcfed79309338ced0380abd824ac1'
@@ -55,7 +56,7 @@ class AppClient {
   // public static readonly mobiApp: string = 'biliLink'
   /**
    * 谜一样的TS
-   * 
+   *
    * @readonly
    * @static
    * @type {number}
@@ -66,7 +67,7 @@ class AppClient {
   }
   /**
    * 谜一样的RND
-   * 
+   *
    * @readonly
    * @static
    * @type {number}
@@ -77,7 +78,7 @@ class AppClient {
   }
   /**
    * 谜一样的DeviceID
-   * 
+   *
    * @readonly
    * @static
    * @type {string}
@@ -91,7 +92,7 @@ class AppClient {
   }
   /**
    * 基本请求参数
-   * 
+   *
    * @readonly
    * @static
    * @type {string}
@@ -99,15 +100,15 @@ class AppClient {
    */
   public static get baseQuery(): string {
     return `actionKey=${this.actionKey}&appkey=${this.appKey}&build=${this.build}\
-&mobi_app=${this.mobiApp}&platform=${this.platform}`
+&device=${this.device}&mobi_app=${this.mobiApp}&platform=${this.platform}`
   }
   /**
    * 对参数签名
-   * 
+   *
    * @static
-   * @param {string} params 
-   * @param {boolean} [ts=true] 
-   * @returns {string} 
+   * @param {string} params
+   * @param {boolean} [ts=true]
+   * @returns {string}
    * @memberof AppClient
    */
   public static signQuery(params: string, ts = true): string {
@@ -118,10 +119,10 @@ class AppClient {
   }
   /**
    * 对参数加参后签名
-   * 
+   *
    * @static
-   * @param {string} [params] 
-   * @returns {string} 
+   * @param {string} [params]
+   * @returns {string}
    * @memberof AppClient
    */
   public static signQueryBase(params?: string): string {
@@ -130,22 +131,22 @@ class AppClient {
   }
   /**
    * 登录状态
-   * 
+   *
    * @static
-   * @type {typeof status}
+   * @type {typeof appStatus}
    * @memberof AppClient
    */
-  public static readonly status: typeof status = status
+  public static readonly status: typeof appStatus = appStatus
   /**
    * 验证码, 登录时会自动清空
-   * 
+   *
    * @type {string}
    * @memberof AppClient
    */
   public captcha: string = ''
   /**
    * 用户名, 推荐邮箱或电话号
-   * 
+   *
    * @abstract
    * @type {string}
    * @memberof AppClient
@@ -153,7 +154,7 @@ class AppClient {
   public userName!: string
   /**
    * 密码
-   * 
+   *
    * @abstract
    * @type {string}
    * @memberof AppClient
@@ -161,7 +162,7 @@ class AppClient {
   public passWord!: string
   /**
    * 登录后获取的B站UID
-   * 
+   *
    * @abstract
    * @type {number}
    * @memberof AppClient
@@ -169,7 +170,7 @@ class AppClient {
   public biliUID!: number
   /**
    * 登录后获取的access_token
-   * 
+   *
    * @abstract
    * @type {string}
    * @memberof AppClient
@@ -177,7 +178,7 @@ class AppClient {
   public accessToken!: string
   /**
    * 登录后获取的refresh_token
-   * 
+   *
    * @abstract
    * @type {string}
    * @memberof AppClient
@@ -185,7 +186,7 @@ class AppClient {
   public refreshToken!: string
   /**
    * 登录后获取的cookieString
-   * 
+   *
    * @abstract
    * @type {string}
    * @memberof AppClient
@@ -193,17 +194,17 @@ class AppClient {
   public cookieString!: string
   /**
    * 请求头
-   * 
+   *
    * @type {request.Headers}
    * @memberof AppClient
    */
   public headers: request.Headers = {
     'Connection': 'Keep-Alive',
-    'User-Agent': 'Mozilla/5.0 BiliDroid/5.26.3 (bbcallen@gmail.com)'
+    'User-Agent': 'Mozilla/5.0 BiliDroid/5.30.0 (bbcallen@gmail.com)'
   }
   /**
    * cookieJar
-   * 
+   *
    * @private
    * @type {request.CookieJar}
    * @memberof AppClient
@@ -211,10 +212,10 @@ class AppClient {
   private __jar: request.CookieJar = request.jar()
   /**
    * 对密码进行加密
-   * 
+   *
    * @protected
-   * @param {getKeyResponseData} publicKey 
-   * @returns {string} 
+   * @param {getKeyResponseData} publicKey
+   * @returns {string}
    * @memberof AppClient
    */
   protected _RSAPassWord(publicKey: getKeyResponseData): string {
@@ -229,12 +230,12 @@ class AppClient {
   }
   /**
    * 获取公钥
-   * 
+   *
    * @protected
-   * @returns {(Promise<response<getKeyResponse> | undefined>)} 
+   * @returns {(Promise<response<getKeyResponse> | undefined>)}
    * @memberof AppClient
    */
-  protected _getKey(): Promise<response<getKeyResponse> | undefined> {
+  protected _getKey(): Promise<XHRresponse<getKeyResponse> | undefined> {
     const getKey: request.Options = {
       method: 'POST',
       uri: 'https://passport.bilibili.com/api/oauth2/getKey',
@@ -247,20 +248,20 @@ class AppClient {
   }
   /**
    * 验证登录信息
-   * 
+   *
    * @protected
-   * @param {getKeyResponseData} publicKey 
-   * @returns {Promise<response<authResponse> | undefined>)} 
+   * @param {getKeyResponseData} publicKey
+   * @returns {Promise<response<authResponse> | undefined>)}
    * @memberof AppClient
    */
-  protected _auth(publicKey: getKeyResponseData): Promise<response<authResponse> | undefined> {
+  protected _auth(publicKey: getKeyResponseData): Promise<XHRresponse<authResponse> | undefined> {
     const passWord = this._RSAPassWord(publicKey)
     const captcha = this.captcha === '' ? '' : `&captcha=${this.captcha}`
     const authQuery = `appkey=${AppClient.appKey}&build=${AppClient.build}${captcha}&mobi_app=${AppClient.mobiApp}\
 &password=${passWord}&platform=${AppClient.platform}&ts=${AppClient.TS}&username=${encodeURIComponent(this.userName)}`
     const auth: request.Options = {
       method: 'POST',
-      uri: 'https://passport.bilibili.com/api/v3/oauth2/login',
+      uri: 'https://passport.bilibili.com/api/v2/oauth2/login',
       body: AppClient.signQuery(authQuery, false),
       jar: this.__jar,
       json: true,
@@ -271,9 +272,9 @@ class AppClient {
   }
   /**
    * 更新用户凭证
-   * 
+   *
    * @protected
-   * @param {authResponseData} authResponseData 
+   * @param {authResponseData} authResponseData
    * @memberof AppClient
    */
   protected _update(authResponseData: authResponseData) {
@@ -289,7 +290,7 @@ class AppClient {
   }
   /**
    * 初始化获取Buvid
-   * 
+   *
    * @memberof AppClient
    */
   public async init() {
@@ -297,14 +298,14 @@ class AppClient {
     this.headers['Device-ID'] = AppClient.DeviceID
     // 设置 Buvid
     const buvid = await tools.XHR<string>({
-      uri: 'http://data.bilibili.com/gv/',
+      uri: 'https://data.bilibili.com/gv/',
       headers: this.headers
     }, 'Android')
     if (buvid !== undefined && buvid.response.statusCode === 200 && buvid.body.endsWith('infoc'))
       this.headers['Buvid'] = buvid.body
     // 设置 Display-ID
     const displayid = await tools.XHR<{ code: number, data: { id: string } }>({
-      uri: 'http://app.bilibili.com/x/v2/display/id?' + AppClient.signQueryBase(),
+      uri: 'https://app.bilibili.com/x/v2/display/id?' + AppClient.signQueryBase(),
       json: true,
       headers: this.headers
     }, 'Android')
@@ -314,8 +315,8 @@ class AppClient {
   }
   /**
    * 获取验证码
-   * 
-   * @returns {Promise<captchaResponse>} 
+   *
+   * @returns {Promise<captchaResponse>}
    * @memberof AppClient
    */
   public async getCaptcha(): Promise<captchaResponse> {
@@ -327,13 +328,13 @@ class AppClient {
     }
     const captchaResponse = await tools.XHR<Buffer>(captcha, 'Android')
     if (captchaResponse !== undefined && captchaResponse.response.statusCode === 200)
-      return { status: status.success, data: captchaResponse.body, }
-    return { status: status.error, data: captchaResponse }
+      return { status: appStatus.success, data: captchaResponse.body, }
+    return { status: appStatus.error, data: captchaResponse }
   }
   /**
    * 客户端登录
-   * 
-   * @returns {Promise<loginResponse>} 
+   *
+   * @returns {Promise<loginResponse>}
    * @memberof AppClient
    */
   public async login(): Promise<loginResponse> {
@@ -343,19 +344,19 @@ class AppClient {
       if (authResponse !== undefined && authResponse.response.statusCode === 200) {
         if (authResponse.body.code === 0) {
           this._update(authResponse.body.data)
-          return { status: status.success, data: authResponse.body }
+          return { status: appStatus.success, data: authResponse.body }
         }
-        if (authResponse.body.code === -105) return { status: status.captcha, data: authResponse.body }
-        return { status: status.error, data: authResponse.body }
+        if (authResponse.body.code === -105) return { status: appStatus.captcha, data: authResponse.body }
+        return { status: appStatus.error, data: authResponse.body }
       }
-      return { status: status.httpError, data: authResponse }
+      return { status: appStatus.httpError, data: authResponse }
     }
-    return { status: status.httpError, data: getKeyResponse }
+    return { status: appStatus.httpError, data: getKeyResponse }
   }
   /**
    * 客户端登出
-   * 
-   * @returns {Promise<logoutResponse>} 
+   *
+   * @returns {Promise<logoutResponse>}
    * @memberof AppClient
    */
   public async logout(): Promise<logoutResponse> {
@@ -369,15 +370,15 @@ class AppClient {
     }
     const revokeResponse = await tools.XHR<revokeResponse>(revoke, 'Android')
     if (revokeResponse !== undefined && revokeResponse.response.statusCode === 200) {
-      if (revokeResponse.body.code === 0) return { status: status.success, data: revokeResponse.body }
-      return { status: status.error, data: revokeResponse.body }
+      if (revokeResponse.body.code === 0) return { status: appStatus.success, data: revokeResponse.body }
+      return { status: appStatus.error, data: revokeResponse.body }
     }
-    return { status: status.httpError, data: revokeResponse }
+    return { status: appStatus.httpError, data: revokeResponse }
   }
   /**
    * 更新access_token
-   * 
-   * @returns {Promise<loginResponse>} 
+   *
+   * @returns {Promise<loginResponse>}
    * @memberof AppClient
    */
   public async refresh(): Promise<loginResponse> {
@@ -392,118 +393,13 @@ class AppClient {
     }
     const refreshResponse = await tools.XHR<authResponse>(refresh, 'Android')
     if (refreshResponse !== undefined && refreshResponse.response.statusCode === 200) {
-      if (refreshResponse.body.code === 0) {
+      if (refreshResponse.body !== undefined && refreshResponse.body.code === 0) {
         this._update(refreshResponse.body.data)
-        return { status: status.success, data: refreshResponse.body }
+        return { status: appStatus.success, data: refreshResponse.body }
       }
-      return { status: status.error, data: refreshResponse.body }
+      return { status: appStatus.error, data: refreshResponse.body }
     }
-    return { status: status.httpError, data: refreshResponse }
+    return { status: appStatus.httpError, data: refreshResponse }
   }
 }
-/**
- * 公钥返回
- * 
- * @interface getKeyResponse
- */
-interface getKeyResponse {
-  ts: number
-  code: number
-  data: getKeyResponseData
-}
-interface getKeyResponseData {
-  hash: string
-  key: string
-}
-/**
- * 验证返回
- * 
- * @interface authResponse
- */
-interface authResponse {
-  ts: number
-  code: number
-  data: authResponseData
-}
-interface authResponseData {
-  status: number
-  token_info: authResponseTokeninfo
-  cookie_info: authResponseCookieinfo
-  sso: string[]
-}
-interface authResponseCookieinfo {
-  cookies: authResponseCookieinfoCooky[]
-  domains: string[]
-}
-interface authResponseCookieinfoCooky {
-  name: string
-  value: string
-  http_only: number
-  expires: number
-}
-interface authResponseTokeninfo {
-  mid: number
-  access_token: string
-  refresh_token: string
-  expires_in: number
-}
-/**
- * 注销返回
- * 
- * @interface revokeResponse
- */
-interface revokeResponse {
-  message: string
-  ts: number
-  code: number
-}
-/**
- * 登录返回信息
- */
-type loginResponse = loginResponseSuccess | loginResponseCaptcha | loginResponseError | loginResponseHttp
-interface loginResponseSuccess {
-  status: status.success
-  data: authResponse
-}
-interface loginResponseCaptcha {
-  status: status.captcha
-  data: authResponse
-}
-interface loginResponseError {
-  status: status.error
-  data: authResponse
-}
-interface loginResponseHttp {
-  status: status.httpError
-  data: response<getKeyResponse> | response<authResponse> | undefined
-}
-/**
- * 登出返回信息
- */
-type logoutResponse = revokeResponseSuccess | revokeResponseError | revokeResponseHttp
-interface revokeResponseSuccess {
-  status: status.success
-  data: revokeResponse
-}
-interface revokeResponseError {
-  status: status.error
-  data: revokeResponse
-}
-interface revokeResponseHttp {
-  status: status.httpError
-  data: response<revokeResponse> | undefined
-}
-/**
- * 验证码返回信息
- */
-type captchaResponse = captchaResponseSuccess | captchaResponseError
-interface captchaResponseSuccess {
-  status: status.success
-  data: Buffer
-}
-interface captchaResponseError {
-  status: status.error
-  data: response<Buffer> | undefined
-}
 export default AppClient
-export { getKeyResponse, authResponse, loginResponse, captchaResponse }
